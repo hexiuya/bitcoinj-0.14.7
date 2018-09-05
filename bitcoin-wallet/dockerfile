@@ -1,0 +1,5 @@
+FROM openjdk
+VOLUME /tmp
+ADD target/bitcoin-wallet-0.14.7.jar bitcoin-wallet-0.14.7.jar
+EXPOSE 8882
+ENTRYPOINT ["java", "-jar", "bitcoin-wallet-0.14.7.jar"]

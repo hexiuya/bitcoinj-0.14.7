@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <!--<dataSource type="POOLED">-->
+                <!--<property name="driver" value="com.mysql.jdbc.Driver"/>-->
+                <!--<property name="url" value="jdbc:mysql://127.0.0.1:3306/crm"/>-->
+                <!--<property name="username" value="root"/>-->
+                <!--<property name="password" value="1234"/>-->
+            <!--</dataSource>-->
+            <dataSource type="org.myutils.util.MyDataSourceFactory">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://127.0.0.1:3306/crm"/>
+                <property name="username" value="root"/>
+                <property name="password" value="hPiEPpn7+CecPh+D++sGdMXzL/DU/pjH3RLQOYbDXQRlTIgbLDGtZSfiZ/Yy6rgP5qoTAPzFz0xEoGfg4ZST4A=="/>
+                <!--<property name="filters" value="config,stat,wall,log4j"/>-->
+                <!--<property name="passwordCallback" value="org.myutils.util.DbPasswordCallback"/>-->
+                <property name="publickey" value="MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJLzQyZ16f6Fszs7XXE4NMQM5fBssVPW5hyUQONN7lNlZecQMCAb+U3ZIvEd4KjRQGj7J78lqKxt2C8sDynSbuECAwEAAQ=="/>
+            </dataSource>
+        </environment>
+    </environments>
+    <mappers>
+        <mapper resource="BalanceLog.xml"/>
+    </mappers>
+</configuration>

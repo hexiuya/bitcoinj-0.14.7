@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.myutils.dao.BalanceLogDao">
+    <select id="getTxid" resultType="String">
+        select transaction_id 'transactionid' from crm.BALANCE_OPERATE a where a.ID = 1
+    </select>
+
+    <select id="getBalanceLog" resultType="org.myutils.model.BalanceLog">
+        select
+          a.id 'id'
+          a.order_id 'orderId',
+          a.operate_type 'operateType',
+          a.customer_id 'customerId',
+          a.PLATFORM_FEE 'platformFee'
+        from crm.BALANCE_LOG a where a.order_id = #{orderId}
+    </select>
+
+
+
+    <update id="updateRecord" parameterType="org.myutils.model.BalanceLog">
+        UPDATE crm.BALANCE_LOG SET
+            TRANSACTION_ID = #{transactionId},
+            RECEIVE_ADDRESS = #{receiveAddress},
+            RECEIVE_AMOUNT = #{receiveAmount},
+            CHANGE_ADDRESS = #{changeAddress},
+            SEND_ADDRESS = #{sendAddress},
+            FEE = #{fee},
+            CONFIRMATIONS = #{confirmations},
+            TRADE_STATUS = #{tradeStatus},
+            PLATFORM_FEE = #{platformFee}
+        WHERE
+        order_id = #{orderId}
+    </update>
+</mapper>

@@ -1,4 +1,4 @@
-FROM java:8
+FROM ingensi/oracle-jdk  
 VOLUME /tmp
 ADD target/bitcoin-wallet-0.14.7.jar bitcoin-wallet-0.14.7.jar
 EXPOSE 8882

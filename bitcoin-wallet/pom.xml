@@ -14,6 +14,12 @@
     <version>0.14.7</version>
 
     <dependencies>
+        <dependency>
+		      <groupId>org.eclipse.swt</groupId>
+		            <artifactId>swt</artifactId>
+			          <version>3.3.1</version>
+				        <type>pom</type>
+	</dependency>
 	<dependency>
 		<groupId>com.myjava</groupId>
 		<artifactId>jfxswt</artifactId>

@@ -14,11 +14,6 @@
     <version>0.14.7</version>
 
     <dependencies>
-	    <dependency>
-		      <groupId>swt</groupId>
-		        <artifactId>swt-linux-gtk</artifactId>
-			  <version>3.0.1</version>
-		  </dependency>
 	<dependency>
 		<groupId>com.myjava</groupId>
 		<artifactId>jfxswt</artifactId>
@@ -29,6 +24,11 @@
 		<artifactId>jfxrt</artifactId>
 		<version>1.1</version>
 	</dependency> 
+	<dependency>
+		<groupId>com.myjava</groupId>
+		<artifactId>swt-native-linux-gtk</artifactId>
+		<version>1.1</version>
+	</dependency>
         <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-jdbc</artifactId>

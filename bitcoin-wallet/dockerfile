@@ -1,5 +1,6 @@
-FROM ingensi/oracle-jdk  
+FROM coeps/8-jdk-jfx 
 VOLUME /tmp
 ADD target/bitcoin-wallet-0.14.7.jar bitcoin-wallet-0.14.7.jar
 EXPOSE 8882
+ENV DISPLAY=10.0.2.15:0
 ENTRYPOINT ["java", "-jar", "bitcoin-wallet-0.14.7.jar"]

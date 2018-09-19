@@ -12,7 +12,7 @@
     <groupId>com.blackjade</groupId>
     <artifactId>bitcoin-wallet</artifactId>
     <version>0.14.7</version>
-
+    <dependencies>
         <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-jdbc</artifactId>

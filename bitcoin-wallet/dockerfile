@@ -1,6 +1,9 @@
 FROM coeps/8-jdk-jfx 
 VOLUME /tmp
+RUN apt-get update -y && apt-get -y install xvfb 
 ADD target/bitcoin-wallet-0.14.7.jar bitcoin-wallet-0.14.7.jar
 EXPOSE 8882
-ENV DISPLAY=10.0.2.15:7
-ENTRYPOINT ["java", "-jar", "bitcoin-wallet-0.14.7.jar"]
+ENV DISPLAY :7
+ADD run.sh /run.sh
+RUN chmod a+x /run.sh
+CMD /run.sh

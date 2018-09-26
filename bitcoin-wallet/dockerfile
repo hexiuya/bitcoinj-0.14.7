@@ -1,9 +1,0 @@
-FROM openjdk_xvfb 
-VOLUME /tmp
-ADD target/bitcoin-wallet-0.14.7.jar bitcoin-wallet-0.14.7.jar
-COPY application.properties application.properties
-EXPOSE 8882
-ENV DISPLAY :7
-ADD run.sh /run.sh
-RUN chmod a+x /run.sh
-CMD /run.sh

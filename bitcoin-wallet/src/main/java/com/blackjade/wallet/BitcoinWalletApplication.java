@@ -110,7 +110,7 @@ public class BitcoinWalletApplication extends Application {
 
 	public void setupWalletKit(@Nullable DeterministicSeed seed) {
 		// If seed is non-null it means we are restoring from backup.
-		bitcoin = new WalletAppKit(params, new File("."), WALLET_FILE_NAME) {
+		bitcoin = new WalletAppKit(params, new File("./data/"), WALLET_FILE_NAME) {
 			@Override
 			protected void onSetupCompleted() {
 				// Don't make the user wait for confirmations for now, as the intention is they're sending it

@@ -1,6 +1,5 @@
-FROM coeps/8-jdk-jfx 
+FROM openjdk_xvfb 
 VOLUME /tmp
-RUN apt-get update -y && apt-get -y install xvfb 
 ADD target/bitcoin-wallet-0.14.7.jar bitcoin-wallet-0.14.7.jar
 COPY application.properties application.properties
 EXPOSE 8882

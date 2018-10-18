@@ -2,6 +2,7 @@ package com.blackjade.wallet;
 
 import com.alibaba.druid.pool.DruidDataSource;
 import com.blackjade.wallet.controller.MainController;
+import com.blackjade.wallet.controller.SendBtcThread;
 import com.blackjade.wallet.controller.WalletSetPasswordController;
 import com.blackjade.wallet.utils.BitcoinModel;
 import com.google.common.util.concurrent.Service;
@@ -10,6 +11,7 @@ import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.kits.WalletAppKit;
+import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.utils.BriefLogFormatter;
@@ -19,6 +21,7 @@ import org.myutils.util.MybatisUtil;
 import org.myutils.util.WebTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
@@ -56,11 +59,17 @@ public class BitcoinWalletApplication extends Application {
 
 	public static ApplicationContext applicationContext;
 
+	@Value("${btc-environment}")
+	public String btcEnvironment;
+
 	public static void main(String[] args) {
 		// 启动web
 		ApplicationContext ctx = SpringApplication.run(BitcoinWalletApplication.class, args);
 		applicationContext = ctx;
 
+		//启动线程
+		SendBtcThread sendBtcThread = new SendBtcThread();
+		sendBtcThread.start();
 		// 传输applicationContext到调用的包
 //		WebTools.setApplicationContext(applicationContext);
 		// 初始化restTemplate到调用的包
@@ -137,6 +146,12 @@ public class BitcoinWalletApplication extends Application {
 
 	@PostConstruct
 	public void init(){
+		System.out.println("比特币连接的环境:"+btcEnvironment);
+		if ("test".equals(btcEnvironment)){
+			params = TestNet3Params.get();
+		}else if ("prod".equals(btcEnvironment)){
+			params = MainNetParams.get();
+		}
 		System.out.println("我被初始化了、、、、、我是用的@PostConstruct的方式、、、、、、");
 	}
 

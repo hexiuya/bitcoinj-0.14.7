@@ -19,17 +19,31 @@
 
 
 
+    <!--<update id="updateRecord" parameterType="org.myutils.model.BalanceLog">-->
+        <!--UPDATE crm.balance_log SET-->
+            <!--TRANSACTION_ID = #{transactionId},-->
+            <!--RECEIVE_ADDRESS = #{receiveAddress},-->
+            <!--RECEIVE_AMOUNT = #{receiveAmount},-->
+            <!--CHANGE_ADDRESS = #{changeAddress},-->
+            <!--SEND_ADDRESS = #{sendAddress},-->
+            <!--FEE = #{fee},-->
+            <!--CONFIRMATIONS = #{confirmations},-->
+            <!--TRADE_STATUS = #{tradeStatus},-->
+            <!--PLATFORM_FEE = #{platformFee}-->
+        <!--WHERE-->
+        <!--order_id = #{orderId}-->
+    <!--</update>-->
     <update id="updateRecord" parameterType="org.myutils.model.BalanceLog">
-        UPDATE crm.balance_log SET
-            TRANSACTION_ID = #{transactionId},
-            RECEIVE_ADDRESS = #{receiveAddress},
-            RECEIVE_AMOUNT = #{receiveAmount},
-            CHANGE_ADDRESS = #{changeAddress},
-            SEND_ADDRESS = #{sendAddress},
-            FEE = #{fee},
-            CONFIRMATIONS = #{confirmations},
-            TRADE_STATUS = #{tradeStatus},
-            PLATFORM_FEE = #{platformFee}
+        UPDATE crm.balance_log
+        <trim prefix="set" suffixOverrides=",">
+            <if test="transactionId!=null">TRANSACTION_ID = #{transactionId},</if>
+            <if test="receiveAddress!=null">RECEIVE_ADDRESS = #{receiveAddress},</if>
+            <if test="changeAddress!=null">CHANGE_ADDRESS = #{changeAddress},</if>
+            <if test="sendAddress!=null">SEND_ADDRESS = #{sendAddress},</if>
+            <if test="fee!=null">FEE = #{fee},</if>
+            <if test="confirmations!=null">CONFIRMATIONS = #{confirmations},</if>
+            <if test="tradeStatus!=null">TRADE_STATUS = #{tradeStatus},</if>
+        </trim>
         WHERE
         order_id = #{orderId}
     </update>

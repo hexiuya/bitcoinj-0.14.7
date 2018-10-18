@@ -8,7 +8,7 @@ import java.util.UUID;
 public class CSendBitcoinAns {
     private UUID requestid;
     private String messageid;
-    private String amount;
+    private long amount;
     private String address;
     private UUID orderid;
     private int clientid;
@@ -40,11 +40,11 @@ public class CSendBitcoinAns {
         this.messageid = messageid;
     }
 
-    public String getAmount() {
+    public long getAmount() {
         return amount;
     }
 
-    public void setAmount(String amount) {
+    public void setAmount(long amount) {
         this.amount = amount;
     }
 

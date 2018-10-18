@@ -19,5 +19,7 @@ public class StatusEnum {
         DEPOSIT_VERIFYING,
         DEPOSIT_SUCCESS,
         DEPOSIT_FAILED
+
+
     }
 }

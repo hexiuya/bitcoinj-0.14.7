@@ -2,11 +2,16 @@ package com.blackjade.wallet.service;
 
 import com.blackjade.wallet.BitcoinWalletApplication;
 import com.blackjade.wallet.apis.CSendBitcoin;
+import com.blackjade.wallet.apis.initiativeReq.dword.CDepositUpdate;
+import com.blackjade.wallet.apis.initiativeReq.dword.CDepositUpdateAns;
+import com.blackjade.wallet.apis.initiativeReq.dword.CWithdrawReq;
 import com.blackjade.wallet.dao.BalanceDao;
+import com.blackjade.wallet.utils.Constant;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.wallet.Wallet;
 import org.myutils.apis.CDepositAcc;
 import org.myutils.apis.CDepositAccAns;
 import org.myutils.apis.ComStatus;
@@ -50,6 +55,29 @@ public class BalanceLogService {
         return result;
     }
 
+    public int saveBalanceLog(CWithdrawReq cWithdrawReq){
+
+        BalanceLog balanceLog = new BalanceLog();
+        balanceLog.setOrderId(cWithdrawReq.getOid().toString());
+        balanceLog.setOperateType(Constant.OPERATE_TYPE_WITHDRAW);//出金
+        balanceLog.setCustomerId(cWithdrawReq.getClientid());
+        balanceLog.setCreateTime(new Timestamp(System.currentTimeMillis()));
+        balanceLog.setNotifyStatus("0");
+        balanceLog.setTradeStatus(StatusEnum.TradeStatus.DEALING.toString());
+        balanceLog.setPnsid(cWithdrawReq.getPnsid());
+        balanceLog.setPnsgid(cWithdrawReq.getPnsgid());
+        balanceLog.setReceiveAddress(cWithdrawReq.getToaddress());
+        balanceLog.setPlatformFee(cWithdrawReq.getFees());
+        balanceLog.setReceiveAmount(cWithdrawReq.getQuant());
+        balanceLog.setActualAmount(cWithdrawReq.getToquant());
+
+        int result = balanceDao.saveRecord(balanceLog);
+
+        return result;
+    }
+
+
+
     public int getCustomerIdByReceiveAddress(String receiveAddress){
         int customerId = balanceDao.getCustomerIdByReceiveAddress(receiveAddress);
         return customerId;
@@ -81,7 +109,7 @@ public class BalanceLogService {
         return balanceLogs;
     }
 
-    public int saveDepositRecord(Transaction tx){
+    public int saveDepositRecord(Transaction tx ,Wallet wallet){
         BalanceLog balanceLog = null;
         int result = 0;
         try {
@@ -109,14 +137,20 @@ public class BalanceLogService {
             long changeAmount = 0L;
             List<TransactionOutput> outputs = tx.getOutputs();
             int size = outputs.size();
-            if (size == 1){//只有收款地址，没有找零地址
-                receiveAddress = outputs.get(0).getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
-                receiveAmount = outputs.get(0).getValue().getValue();
-            } else if (size == 2){
-                receiveAddress = outputs.get(0).getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
-                receiveAmount = outputs.get(0).getValue().getValue();
-                changeAddress = outputs.get(1).getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
-                changeAmount = outputs.get(1).getValue().getValue();
+//            if (size == 1){//只有收款地址，没有找零地址
+//                receiveAddress = outputs.get(0).getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
+//                receiveAmount = outputs.get(0).getValue().getValue();
+//            } else if (size == 2){
+//                receiveAddress = outputs.get(0).getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
+//                receiveAmount = outputs.get(0).getValue().getValue();
+//                changeAddress = outputs.get(1).getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
+//                changeAmount = outputs.get(1).getValue().getValue();
+//            }
+            for (TransactionOutput output:outputs){//目前仅支持一个收款地址
+                if (output.isMineOrWatched(wallet)){
+                    receiveAddress = output.getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
+                    receiveAmount = output.getValue().getValue();
+                }
             }
 
             // 客户ID
@@ -152,7 +186,8 @@ public class BalanceLogService {
             balanceLog.setSendAddress(sendAddress.toString());
             balanceLog.setFee(fee);
             balanceLog.setConfirmations(depth);
-            balanceLog.setPlatformFee(platformFee);
+//            balanceLog.setPlatformFee(platformFee); //初始化为Null
+//            balanceLog.setActualAmount(0);//初始化为Null
             balanceLog.setCreateTime(createTime);
             balanceLog.setNotifyStatus(notifyStatus);
             balanceLog.setTradeStatus(tradeStatus);
@@ -163,28 +198,37 @@ public class BalanceLogService {
             RestTemplate restTemplate = (RestTemplate) BitcoinWalletApplication.applicationContext.getBean("initRestTemplate");
 //                String url = "http://crm-c/cCheckEmailUnique";
 //                CCheckEmailUnique cCheckEmailUnique = new CCheckEmailUnique();
-            log.info("call apm to increase money temporarily ...");
+            log.info("call crm-c to increase money temporarily ...");
 //            RestTemplate restTemplate = new RestTemplate();
 //            String url = "http://192.168.1.9:8116/deposit";
-            String url = "http://otc-apm/deposit";
-            long quant = receiveAmount - platformFee;//收款时index=1的为接收金额
-            CDepositAcc cDepositAcc = new CDepositAcc();
-            cDepositAcc.setMessageid("7103");
-            cDepositAcc.setRequestid(UUID.randomUUID());
-            cDepositAcc.setClientid(customerId);
-            cDepositAcc.setOid(orderId);
-            cDepositAcc.setPnsid(1);
-            cDepositAcc.setPnsgid(8);
-            cDepositAcc.setQuant(quant);
-            cDepositAcc.setTranid(txid);
-            cDepositAcc.setConlvl(ComStatus.DepositOrdStatus.PROCEEDING);
+            String url = "http://crm-c/cDepositUpdate";
+            long quant = receiveAmount;//收款时index=1的为接收金额
+            long fees = 0L;
+            long rcvquant = quant - platformFee;
 
-            CDepositAccAns cDepositAccAns = restTemplate.postForObject(url, cDepositAcc, CDepositAccAns.class);
-            System.out.println("result:"+cDepositAccAns.getStatus());
-            if (cDepositAccAns.getStatus() == ComStatus.DepositAccStatus.SUCCESS){
+            CDepositUpdate cDepositUpdate = new CDepositUpdate();
+            cDepositUpdate.setRequestid(UUID.randomUUID());
+            cDepositUpdate.setMessageid("4003");
+            cDepositUpdate.setClientid(balanceLog.getCustomerId());
+            cDepositUpdate.setOid(orderId);
+            cDepositUpdate.setPnsid(balanceLog.getPnsid());
+            cDepositUpdate.setPnsgid(balanceLog.getPnsgid());
+            cDepositUpdate.setQuant(quant);
+            cDepositUpdate.setFees(0L);
+            cDepositUpdate.setRcvquant(rcvquant);
+            cDepositUpdate.setToaddress(receiveAddress);
+            cDepositUpdate.setTransactionid(txid);
+            cDepositUpdate.setConlvl(com.blackjade.wallet.apis.initiativeReq.dword.ComStatus.DepositOrdStatus.PROCEEDING);
+
+            CDepositUpdateAns cDepositUpdateAns = restTemplate.postForObject(url, cDepositUpdate, CDepositUpdateAns.class);
+            System.out.println("result:"+cDepositUpdateAns.getStatus());
+            if (cDepositUpdateAns.getStatus() == com.blackjade.wallet.apis.initiativeReq.dword.ComStatus.DepositAccStatus.SUCCESS){
                 log.info("call apm to increase money temporarily successfully ...");
+                balanceLog.setActualAmount(cDepositUpdateAns.getRcvquant());
+                balanceLog.setPlatformFee(cDepositUpdateAns.getFees());
+                balanceDao.updateDepositRecord(balanceLog);
             } else {
-                log.info(cDepositAccAns.toString());
+                log.info(cDepositUpdateAns.toString());
             }
         } catch (Exception e) {
             log.error(e.getMessage(),e);

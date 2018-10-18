@@ -3757,7 +3757,6 @@ public class Wallet extends BaseTaggableObject
             TransactionOutput output1 = outputs.get(0);//转账时index=0的为转账金额
             Coin coin = output1.getValue();
             long amount = request.getAmount();
-            long quant = fee + amount;
             /*String receiveAddress = output1.getAddressFromP2PKHScript(request.getParams()).toString();
             String changeAddress = null;
             TransactionOutput output2 = outputs.get(1);
@@ -3775,54 +3774,6 @@ public class Wallet extends BaseTaggableObject
             }*/
             String txid = request.tx.getHashAsString();
 
-            // TODO 向apm发送请求
-//            if (!WebTools.executeTimer()){
-//                System.out.println("no urls ...............");
-//            }
-
-
-            // ribbon 方式调用
-//            RestTemplate restTemplate = (RestTemplate) BitcoinWalletApplication.applicationContext.getBean(RestTemplate.class);
-//            String url = "http://crm-c/cCheckEmailUnique";
-
-//            RestTemplate restTemplate = new RestTemplate();
-            RestTemplate restTemplate = WebTools.getRestTemplate();
-//            String url = "http://127.0.0.1:8880/cCheckEmailUnique";
-//            CCheckEmailUnique cCheckEmailUnique = new CCheckEmailUnique();
-
-//            String url = "http://192.168.1.9:8116/withdraw";
-            String url = "http://otc-apm/withdraw";
-            CWithdrawAcc cWithdrawAcc = new CWithdrawAcc();
-            cWithdrawAcc.setMessageid("7105");
-            cWithdrawAcc.setRequestid(UUID.randomUUID());
-            cWithdrawAcc.setClientid(request.getClientId());
-            cWithdrawAcc.setOid(request.getOrderId());
-            cWithdrawAcc.setPnsid(request.getPnsid());
-            cWithdrawAcc.setPnsgid(request.getPnsgid());
-            cWithdrawAcc.setQuant(quant);
-            cWithdrawAcc.setTranid(txid);
-            cWithdrawAcc.setConlvl(ComStatus.WithdrawOrdStatus.PROCEEDING);
-            try {
-//                String result = restTemplate.postForObject(url, cCheckEmailUnique, String.class);
-//                System.out.println("result:"+result);
-                CWithdrawAccAns cWithdrawAccAns = restTemplate.postForObject(url, cWithdrawAcc, CWithdrawAccAns.class);
-                System.out.println("result : " + cWithdrawAccAns.getStatus());
-
-                if (cWithdrawAccAns.getStatus() != ComStatus.WithdrawAccStatus.SUCCESS){
-                    throw new Exception(cWithdrawAccAns.getStatus().toString());
-                }
-
-            } catch (RestClientException e) {
-                e.printStackTrace();
-                // TODO 把数据记录在数据库
-//                throw new RestClientException(e.getMessage());
-                throw new Exception(e.getMessage());
-            } catch (Exception e){
-                e.printStackTrace();
-                throw new Exception(e.getMessage());
-            }
-
-
             // 加入待确认Map
 
             // TODO 向数据库记录状态
@@ -3835,38 +3786,20 @@ public class Wallet extends BaseTaggableObject
                 balanceLog.setOrderId(request.getOrderId().toString());
                 balanceLog.setTransactionId(txid);
 //                balanceLog.setReceiveAddress(receiveAddress);
-                balanceLog.setReceiveAmount(amount);
+//                balanceLog.setReceiveAmount(amount);
 //                balanceLog.setChangeAddress(changeAddress);
 //                balanceLog.setSendAddress(sendAddress.toString());
                 balanceLog.setFee(fee);
                 balanceLog.setConfirmations(0);
-                balanceLog.setPlatformFee(0);
-                balanceLog.setTradeStatus(StatusEnum.TradeStatus.BLOCKED_FUNDS_SUCCESS.toString());
+                balanceLog.setTradeStatus(StatusEnum.TradeStatus.SENDING_BTC_NETWORK.toString());
 
                 int count = balanceLogDao.updateRecord(balanceLog);
                 session.commit();
 
                 System.out.println("count:"+count);
 
-            } catch (IOException e) {
-                e.printStackTrace();
-                try {
-                    cWithdrawAcc.setConlvl(ComStatus.WithdrawOrdStatus.FAILED);
-                    CWithdrawAccAns cWithdrawAccAns = restTemplate.postForObject(url, cWithdrawAcc, CWithdrawAccAns.class);
-                    System.out.println("result : " + cWithdrawAccAns.getStatus());
-                } catch (RestClientException e1) {
-                    e1.printStackTrace();
-                }
-                throw new Exception(e.getMessage());
             } catch (Exception e){
                 e.printStackTrace();
-                try {
-                    cWithdrawAcc.setConlvl(ComStatus.WithdrawOrdStatus.FAILED);
-                    CWithdrawAccAns cWithdrawAccAns = restTemplate.postForObject(url, cWithdrawAcc, CWithdrawAccAns.class);
-                    System.out.println("result : " + cWithdrawAccAns.getStatus());
-                } catch (RestClientException e1) {
-                    e1.printStackTrace();
-                }
                 throw new Exception(e.getMessage());
             } finally {
                 if(session != null){
@@ -4218,36 +4151,6 @@ public class Wallet extends BaseTaggableObject
     }
 
     /**
-     * Returns a list of all outputs that are being tracked by this wallet either from the {@link UTXOProvider}
-     * (in this case the existence or not of private keys is ignored), or the wallets internal storage (the default)
-     * taking into account the flags.
-     *
-     * @param excludeImmatureCoinbases Whether to ignore coinbase outputs that we will be able to spend in future once they mature.
-     * @param excludeUnsignable Whether to ignore outputs that we are tracking but don't have the keys to sign for.
-     */
-    public List<TransactionOutput> calculateAllSpendCandidates(boolean excludeImmatureCoinbases, boolean excludeUnsignable) {
-        lock.lock();
-        try {
-            List<TransactionOutput> candidates;
-            if (vUTXOProvider == null) {
-                candidates = new ArrayList<TransactionOutput>(myUnspents.size());
-                for (TransactionOutput output : myUnspents) {
-                    if (excludeUnsignable && !canSignFor(output.getScriptPubKey())) continue;
-                    Transaction transaction = checkNotNull(output.getParentTransaction());
-                    if (excludeImmatureCoinbases && !transaction.isMature())
-                        continue;
-                    candidates.add(output);
-                }
-            } else {
-                candidates = calculateAllSpendCandidatesFromUTXOProvider(excludeImmatureCoinbases);
-            }
-            return candidates;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
      * Returns true if this wallet has at least one of the private keys needed to sign for this scriptPubKey. Returns
      * false if the form of the script is not known or if the script is OP_RETURN.
      */
@@ -4283,6 +4186,36 @@ public class Wallet extends BaseTaggableObject
             return false;
         }
         return false;
+    }
+
+    /**
+     * Returns a list of all outputs that are being tracked by this wallet either from the {@link UTXOProvider}
+     * (in this case the existence or not of private keys is ignored), or the wallets internal storage (the default)
+     * taking into account the flags.
+     *
+     * @param excludeImmatureCoinbases Whether to ignore coinbase outputs that we will be able to spend in future once they mature.
+     * @param excludeUnsignable Whether to ignore outputs that we are tracking but don't have the keys to sign for.
+     */
+    public List<TransactionOutput> calculateAllSpendCandidates(boolean excludeImmatureCoinbases, boolean excludeUnsignable) {
+        lock.lock();
+        try {
+            List<TransactionOutput> candidates;
+            if (vUTXOProvider == null) {
+                candidates = new ArrayList<TransactionOutput>(myUnspents.size());
+                for (TransactionOutput output : myUnspents) {
+                    if (excludeUnsignable && !canSignFor(output.getScriptPubKey())) continue;
+                    Transaction transaction = checkNotNull(output.getParentTransaction());
+                    if (excludeImmatureCoinbases && !transaction.isMature())
+                        continue;
+                    candidates.add(output);
+                }
+            } else {
+                candidates = calculateAllSpendCandidatesFromUTXOProvider(excludeImmatureCoinbases);
+            }
+            return candidates;
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**

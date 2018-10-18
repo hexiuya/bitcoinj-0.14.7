@@ -2,7 +2,9 @@ package com.blackjade.wallet.controller;
 
 import com.blackjade.wallet.BitcoinWalletApplication;
 import com.blackjade.wallet.apis.CSendBitcoin;
+import com.blackjade.wallet.apis.initiativeReq.dword.CWithdrawReq;
 import com.blackjade.wallet.utils.BitcoinModel;
+import com.blackjade.wallet.utils.Constant;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import org.bitcoinj.core.*;
@@ -31,15 +33,16 @@ public class SendMoneyController {
         return result;
     }*/
 
-    public String send(CSendBitcoin cSendBitcoin) throws Exception {
+    public String send(CWithdrawReq cWithdrawReq) throws Exception {
 
-        String amountStr = cSendBitcoin.getAmount();
-        String address = cSendBitcoin.getAddress();
+        long amountLong = cWithdrawReq.getToquant();
+        String address = cWithdrawReq.getToaddress();
         String transactionId = "";
 
         // Address exception cannot happen as we validated it beforehand.
         try {
-            Coin amount = Coin.parseCoin(amountStr);
+            Coin amount = Coin.valueOf(amountLong);
+
             Address destination = Address.fromBase58(BitcoinWalletApplication.params, address);
             SendRequest req;
             if (amount.equals(BitcoinWalletApplication.bitcoin.wallet().getBalance()))
@@ -49,15 +52,15 @@ public class SendMoneyController {
             req.aesKey = aesKey;
 
             // chaolumen start
-            req.setOrderId(cSendBitcoin.getOrderid());
-            req.setOperateType(cSendBitcoin.getOperateType());
-            req.setClientId(cSendBitcoin.getClientid());
-            req.setPlatformFee(cSendBitcoin.getPlatformFee());
-            req.setPnsid(cSendBitcoin.getPnsid());
-            req.setPnsgid(cSendBitcoin.getPnsgid());
+            req.setOrderId(cWithdrawReq.getOid());
+            req.setOperateType(Constant.OPERATE_TYPE_WITHDRAW);
+            req.setClientId(cWithdrawReq.getClientid());
+            req.setPlatformFee(cWithdrawReq.getFees());
+            req.setPnsid(cWithdrawReq.getPnsid());
+            req.setPnsgid(cWithdrawReq.getPnsgid());
             req.setParams(BitcoinWalletApplication.params);
             req.setAmount(amount.getValue());
-            req.setReceiveAddress(cSendBitcoin.getAddress());
+            req.setReceiveAddress(cWithdrawReq.getToaddress());
             // chaolumen end
 
             sendResult = BitcoinWalletApplication.bitcoin.wallet().sendCoins(req);
@@ -84,6 +87,7 @@ public class SendMoneyController {
                 if (reason == TransactionConfidence.Listener.ChangeReason.SEEN_PEERS)
                     updateTitleForBroadcast();
             });
+
 
             updateTitleForBroadcast();
 

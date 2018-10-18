@@ -2,20 +2,24 @@ package com.blackjade.wallet.controller.webcontroller;
 
 import com.blackjade.wallet.BitcoinWalletApplication;
 import com.blackjade.wallet.apis.*;
-import com.blackjade.wallet.controller.SendMoneyController;
+import com.blackjade.wallet.apis.ComStatus;
+import com.blackjade.wallet.apis.initiativeReq.dword.*;
+import com.blackjade.wallet.controller.SendBtcThread;
 import com.blackjade.wallet.service.BalanceLogService;
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.NetworkParameters;
+import org.bitcoinj.core.*;
 import org.myutils.apis.CCheckEmailUnique;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+import com.blackjade.wallet.apis.initiativeReq.dword.ComStatus.WithdrawAccStatus;
+
+import java.util.UUID;
 
 /**
  * Created by Administrator on 2018/8/14.
@@ -59,6 +63,7 @@ public class WebController {
         return str;
     }
 
+    // 保存数据库，放入到队列中，然后响应上游模块
     @RequestMapping(value = "/cSendBitcoin")
     public CSendBitcoinAns sendBitcoin(@RequestBody CSendBitcoin cSendBitcoin){
         CSendBitcoinAns cSendBitcoinAns = new CSendBitcoinAns();
@@ -78,22 +83,34 @@ public class WebController {
             return cSendBitcoinAns;
         }
 
+
+        // 存入数据库
         balanceLogService.saveBalanceLog(cSendBitcoin);
 
         String address = cSendBitcoin.getAddress();
-        // TODO 要做異常處理
-        Address destination = Address.fromBase58(BitcoinWalletApplication.params, address);
-        final NetworkParameters parameters = destination.getParameters();
-        if (parameters == null){
+        // TODO 检查收款地址是否合法 要做異常處理
+        final NetworkParameters parameters;
+        try {
+            Address destination = Address.fromBase58(BitcoinWalletApplication.params, address);
+            parameters = destination.getParameters();
+            if (parameters == null){
+                log.info("Address is for an unknown network");
+                cSendBitcoinAns.setStatus(ComStatus.SendBitcoinEnum.RECEIVE_ADDRESS_IS_INVALID);
+                return  cSendBitcoinAns;
+            }
+        } catch (AddressFormatException e) {
+            e.printStackTrace();
             log.info("Address is for an unknown network");
             cSendBitcoinAns.setStatus(ComStatus.SendBitcoinEnum.RECEIVE_ADDRESS_IS_INVALID);
             return  cSendBitcoinAns;
         }
 
-        SendMoneyController sendMoneyController = new SendMoneyController();
+//        SendMoneyController sendMoneyController = new SendMoneyController();
         String transactionId = null;
         try {
-            transactionId = sendMoneyController.send(cSendBitcoin);
+//            transactionId = sendMoneyController.send(cSendBitcoin);
+            // 加入队列中
+//            SendBtcThread.addToQueue(cSendBitcoin);
         } catch (Exception e) {
             log.error(e.getMessage(),e);
             cSendBitcoinAns.setStatus(ComStatus.SendBitcoinEnum.SERVER_BUSY);
@@ -104,6 +121,62 @@ public class WebController {
         cSendBitcoinAns.setStatus(ComStatus.SendBitcoinEnum.SUCCESS);
 
         return cSendBitcoinAns ;
+    }
+
+    @RequestMapping(value = "/withdraw")
+    @ResponseBody
+    public CWithdrawReqAns withdraw(@RequestBody CWithdrawReq cWithdrawReq){
+        CWithdrawReqAns cWithdrawReqAns = new CWithdrawReqAns(cWithdrawReq.getRequestid());
+        cWithdrawReqAns.setClientid(cWithdrawReq.getClientid());
+        cWithdrawReqAns.setOid(cWithdrawReq.getOid());
+        cWithdrawReqAns.setPnsid(cWithdrawReq.getPnsid());
+        cWithdrawReqAns.setPnsgid(cWithdrawReq.getPnsgid());
+        cWithdrawReqAns.setToaddress(cWithdrawReq.getToaddress());
+        cWithdrawReqAns.setQuant(cWithdrawReq.getQuant());
+        cWithdrawReqAns.setFees(cWithdrawReq.getFees());
+        cWithdrawReqAns.setToquant(cWithdrawReq.getToquant());
+
+        WithdrawAccStatus withdrawAccStatus = cWithdrawReq.reviewData();
+        if (WithdrawAccStatus.SUCCESS != withdrawAccStatus){
+            cWithdrawReqAns.setStatus(withdrawAccStatus);
+            return cWithdrawReqAns;
+        }
+
+        // 存入数据库
+        balanceLogService.saveBalanceLog(cWithdrawReq);
+
+        String address = cWithdrawReq.getToaddress();
+        // TODO 检查收款地址是否合法 要做異常處理
+        final NetworkParameters parameters;
+        try {
+            Address destination = Address.fromBase58(BitcoinWalletApplication.params, address);
+            parameters = destination.getParameters();
+            if (parameters == null){
+                log.info("Address is for an unknown network");
+                cWithdrawReqAns.setStatus(WithdrawAccStatus.IN_MSG_ERR);
+                return  cWithdrawReqAns;
+            }
+        } catch (AddressFormatException e) {
+            e.printStackTrace();
+            log.info("Address is for an unknown network");
+            cWithdrawReqAns.setStatus(WithdrawAccStatus.UNKNOWN);
+            return  cWithdrawReqAns;
+        }
+
+        String transactionId = null;
+        try {
+//            transactionId = sendMoneyController.send(cSendBitcoin);
+            // 加入队列中
+            SendBtcThread.addToQueue(cWithdrawReq);
+        } catch (Exception e) {
+            log.error(e.getMessage(),e);
+            cWithdrawReqAns.setStatus(WithdrawAccStatus.UNKNOWN);
+            return  cWithdrawReqAns;
+        }
+
+        cWithdrawReqAns.setStatus(WithdrawAccStatus.SUCCESS);
+
+        return cWithdrawReqAns ;
     }
 
     @RequestMapping(value = "/cGetFreshAddress")
@@ -138,4 +211,13 @@ public class WebController {
         return address.toString();
     }
 
+    @RequestMapping(value = "/getTransactionByTxid")
+    public String getTransactionByTxid(String txid){
+        Sha256Hash sha256Hash = Sha256Hash.wrap(txid);
+        Transaction transaction = BitcoinWalletApplication.bitcoin.wallet().getTransaction(sha256Hash);
+        if (transaction == null){
+            return "no result";
+        }
+        return "this txid is owner me";
+    }
 }

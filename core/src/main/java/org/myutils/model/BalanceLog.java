@@ -19,6 +19,7 @@ public class BalanceLog {
     private long fee;
     private int confirmations;
     private long platformFee;
+    private long actualAmount;
     private Timestamp createTime;
     private String notifyStatus;
     private String tradeStatus;
@@ -170,5 +171,13 @@ public class BalanceLog {
 
     public void setPnsgid(int pnsgid) {
         this.pnsgid = pnsgid;
+    }
+
+    public long getActualAmount() {
+        return actualAmount;
+    }
+
+    public void setActualAmount(long actualAmount) {
+        this.actualAmount = actualAmount;
     }
 }

@@ -1,7 +1,11 @@
 package com.blackjade.wallet.utils;
 
 import com.blackjade.wallet.BitcoinWalletApplication;
+import com.blackjade.wallet.apis.initiativeReq.dword.*;
+import com.blackjade.wallet.apis.initiativeReq.dword.ComStatus;
 import com.blackjade.wallet.service.BalanceLogService;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
@@ -23,6 +27,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+
+import com.blackjade.wallet.apis.initiativeReq.dword.ComStatus.DepositOrdStatus;
 
 /**
  * Created by Administrator on 2018/8/13.
@@ -114,22 +120,27 @@ public class BitcoinModel {
                 // TODO 向apm发送请求，给用户账户增加钱
                 if (count.intValue() == 2){
                     RestTemplate restTemplate = (RestTemplate) BitcoinWalletApplication.applicationContext.getBean("initRestTemplate");
-                    String url = "http://otc-apm/deposit";
+                    String url = "http://crm-c/cDepositUpdate";
 
-                    long quant = balanceLog.getReceiveAmount() - balanceLog.getPlatformFee();
-                    CDepositAcc cDepositAcc = new CDepositAcc();
-                    cDepositAcc.setMessageid("7103");
-                    cDepositAcc.setRequestid(UUID.randomUUID());
-                    cDepositAcc.setClientid(balanceLog.getCustomerId());
-                    cDepositAcc.setOid(UUID.fromString(balanceLog.getOrderId()));
-                    cDepositAcc.setPnsid(balanceLog.getPnsid());
-                    cDepositAcc.setPnsgid(balanceLog.getPnsgid());
-                    cDepositAcc.setQuant(quant);
-                    cDepositAcc.setTranid(txid);
-                    cDepositAcc.setConlvl(ComStatus.DepositOrdStatus.SUCCESS);
+                    long quant = balanceLog.getReceiveAmount();//总金额
+                    long fees = balanceLog.getPlatformFee();//平台费用
+                    long rcvquant = balanceLog.getActualAmount();//实际应缴金额
+                    CDepositUpdate cDepositUpdate = new CDepositUpdate();
+                    cDepositUpdate.setRequestid(UUID.randomUUID());
+                    cDepositUpdate.setMessageid("4003");
+                    cDepositUpdate.setClientid(balanceLog.getCustomerId());
+                    cDepositUpdate.setOid(UUID.fromString(balanceLog.getOrderId()));
+                    cDepositUpdate.setPnsid(balanceLog.getPnsid());
+                    cDepositUpdate.setPnsgid(balanceLog.getPnsgid());
+                    cDepositUpdate.setQuant(quant);
+                    cDepositUpdate.setFees(fees);
+                    cDepositUpdate.setRcvquant(rcvquant);
+                    cDepositUpdate.setToaddress(balanceLog.getReceiveAddress());
+                    cDepositUpdate.setTransactionid(txid);
+                    cDepositUpdate.setConlvl(DepositOrdStatus.SUCCESS);
                     try {
-                        CDepositAccAns cDepositAccAns = restTemplate.postForObject(url, cDepositAcc, CDepositAccAns.class);
-                        System.out.println("result:"+cDepositAccAns.getStatus());
+                        CDepositUpdateAns cDepositUpdateAns = restTemplate.postForObject(url, cDepositUpdate, CDepositUpdateAns.class);
+                        System.out.println("result:"+cDepositUpdateAns.getStatus());
                     } catch (RestClientException e) {
                         e.printStackTrace();
                         // TODO 把数据记录在数据库
@@ -153,21 +164,24 @@ public class BitcoinModel {
                     long platformFee = balanceLog.getPlatformFee();
                     long quant = receiveAmount + fee + platformFee;
                     RestTemplate restTemplate = (RestTemplate) BitcoinWalletApplication.applicationContext.getBean("initRestTemplate");
-                    String url = "http://otc-apm/withdraw";
+                    String url = "http://crm-c/cWithdrawUpdate";
 
-                    CWithdrawAcc cWithdrawAcc = new CWithdrawAcc();
-                    cWithdrawAcc.setMessageid("7105");
-                    cWithdrawAcc.setRequestid(UUID.randomUUID());
-                    cWithdrawAcc.setClientid(balanceLog.getCustomerId());
-                    cWithdrawAcc.setOid(UUID.fromString(balanceLog.getOrderId()));
-                    cWithdrawAcc.setPnsid(balanceLog.getPnsid());
-                    cWithdrawAcc.setPnsgid(balanceLog.getPnsgid());
-                    cWithdrawAcc.setQuant(quant);
-                    cWithdrawAcc.setTranid(txid);
-                    cWithdrawAcc.setConlvl(org.myutils.apis.ComStatus.WithdrawOrdStatus.SUCCESS);
+                    CWithdrawUpdate cWithdrawUpdate = new CWithdrawUpdate();
+                    cWithdrawUpdate.setRequestid(UUID.randomUUID());
+                    cWithdrawUpdate.setMessageid("4007");
+                    cWithdrawUpdate.setClientid(balanceLog.getCustomerId());
+                    cWithdrawUpdate.setOid(UUID.fromString(balanceLog.getOrderId()));
+                    cWithdrawUpdate.setPnsid(balanceLog.getPnsid());
+                    cWithdrawUpdate.setPnsgid(balanceLog.getPnsgid());
+                    cWithdrawUpdate.setToaddress(balanceLog.getReceiveAddress());
+                    cWithdrawUpdate.setQuant(balanceLog.getReceiveAmount());
+                    cWithdrawUpdate.setFees(balanceLog.getPlatformFee());
+                    cWithdrawUpdate.setToquant(balanceLog.getActualAmount());
+                    cWithdrawUpdate.setTransactionid(balanceLog.getTransactionId());
+                    cWithdrawUpdate.setConlvl(ComStatus.WithdrawOrdStatus.SUCCESS);
                     try {
-                        CWithdrawAccAns cWithdrawAccAns = restTemplate.postForObject(url, cWithdrawAcc, CWithdrawAccAns.class);
-                        System.out.println("result : " + cWithdrawAccAns.getStatus());
+                        CWithdrawUpdateAns cWithdrawUpdateAns = restTemplate.postForObject(url, cWithdrawUpdate, CWithdrawUpdateAns.class);
+                        System.out.println("result : " + cWithdrawUpdateAns.getStatus());
 
                     } catch (RestClientException e) {
                         e.printStackTrace();
@@ -227,15 +241,42 @@ public class BitcoinModel {
 
                     // 加入待确认tx的Map
                     addVerifyingTx(tx.getHashAsString(),2);
-                    // TODO 记录比特币数据库 并向apm发送通知
 
-                    balanceLogService.saveDepositRecord(tx);
-                    // TODO 向crm-c发送请求,订单确认中
+                    // TODO 记录比特币数据库 并向crm-c发送通知
+                    balanceLogService.saveDepositRecord(tx,wallet);
+
+                    // TODO 监听事务深度变化
+                    Futures.addCallback(tx.getConfidence().getDepthFuture(1), new FutureCallback<TransactionConfidence>() {
+                        @Override
+                        public void onSuccess(TransactionConfidence transactionConfidence) {
+                            // TODO 向crm发送请求
+                            System.out.println("txid:"+transactionConfidence.getTransactionHash());
+                        }
+
+                        @Override
+                        public void onFailure(Throwable throwable) {
+                            // TODO 向crm发送请求
+                        }
+                    });
+
 
                     return ;
                 }
 
-                if (balanceLog.getOperateType() == 1){//找零事件
+                if (balanceLog.getOperateType() == 1){//找零事件,如果transaction里没有找零,那么这个method放到这里就是不对的,要放到其他位置
+                    String receiveAddress = null;
+                    String changeAddress ;
+                    List<TransactionOutput> TransactionOutputs =  tx.getOutputs();
+                    for (TransactionOutput output : TransactionOutputs){
+                        if (output.isMineOrWatched(wallet)) {
+                            System.out.println("找零地址：" + output.getAddressFromP2PKHScript(BitcoinWalletApplication.params));
+                            changeAddress = output.getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
+                        }else {
+                            System.out.println("收款地址：" + output.getAddressFromP2PKHScript(BitcoinWalletApplication.params));
+                            receiveAddress = output.getAddressFromP2PKHScript(BitcoinWalletApplication.params).toString();
+                        }
+                    }
+
                     balanceLogService.updateStatus(null, StatusEnum.TradeStatus.SEND_BTC_NETWORK_SUCCESS.toString(),txid);
                 }
 

@@ -14,6 +14,8 @@ public interface BalanceDao {
 
     public int saveDepositRecord(BalanceLog balanceLog);
 
+    public int updateDepositRecord(BalanceLog balanceLog);
+
     public int getCustomerIdByReceiveAddress(@Param(value="receiveAddress") String receiveAddress);
 
     public int updateStatus(BalanceLog balanceLog);

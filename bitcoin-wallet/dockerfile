@@ -1,4 +1,4 @@
-FROM openjdk_xvfb
+FROM openjdk_xvfb:8
 VOLUME /tmp
 ADD target/bitcoin-wallet-0.14.7.jar bitcoin-wallet-0.14.7.jar
 COPY application.properties application.properties
